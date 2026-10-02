@@ -8,3 +8,9 @@ wheels/
 
 # Virtual environments
 .venv
+
+# Saved job postings and uploads
+data/
+
+# The resume's own git repo (personal data, and a repo inside this one)
+resumes/
