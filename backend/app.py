@@ -5,6 +5,7 @@ from flask import Flask, jsonify, request, send_file
 
 from details import FIELDS, LEVELS, USER_FIELDS, WORK_MODES, DetailsError, extract_details
 from insights import InsightsError, build_insights
+from search import SearchError, search
 from resume_repo import commit_resume, current_commit, resume_at
 from storage import (
     STATUSES,
@@ -165,6 +166,15 @@ def insights():
     try:
         return jsonify(build_insights(request.args.get("range", "30"), request.args.get("tz", "UTC")))
     except InsightsError as e:
+        raise BadRequest(str(e)) from e
+
+
+@app.get('/api/search')
+def search_postings():
+    """Search the text of every saved posting. ?q=<words>; every word must appear."""
+    try:
+        return jsonify(search(request.args.get("q", "")))
+    except SearchError as e:
         raise BadRequest(str(e)) from e
 
 

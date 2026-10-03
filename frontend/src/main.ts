@@ -8,6 +8,7 @@ import {
   postApplication,
   resumeUrl,
   retryDetails,
+  searchApplications,
   STATUSES,
   updateStatus,
   type Details,
@@ -21,7 +22,7 @@ const app = document.querySelector<HTMLDivElement>('#app')!
 
 app.innerHTML = `
   <header id="topbar">
-    <h1>Job Tracker</h1>
+    <h1>Job Path</h1>
     <nav class="tabs" aria-label="Views">
       <button type="button" class="tab" data-view="add" aria-current="page">Add</button>
       <button type="button" class="tab" data-view="history">My Jobs <span id="history-count" class="tab-count"></span></button>
@@ -82,6 +83,7 @@ app.innerHTML = `
     <div class="history-layout">
     <section class="history-panel">
       <h2>My Jobs</h2>
+      <input id="search" type="search" placeholder="Search postings…" aria-label="Search the text of saved postings" />
       <p id="history-status">Loading…</p>
       <ul id="history-list"></ul>
     </section>
@@ -508,7 +510,8 @@ async function loadHistory() {
   window.clearTimeout(pollTimer)
   try {
     const { pages } = await getHistory()
-    historyListEl.replaceChildren(...pages.map(renderHistoryItem))
+    if (searchQuery()) runSearch() // keep showing search results, refreshed
+    else historyListEl.replaceChildren(...pages.map(renderHistoryItem))
     historyStatusEl.textContent = pages.length ? '' : 'No saved postings yet.'
     historyStatusEl.hidden = pages.length > 0
     historyCountEl.textContent = pages.length ? String(pages.length) : ''
@@ -595,5 +598,40 @@ function showView(view: View) {
 for (const tab of document.querySelectorAll<HTMLButtonElement>('.tab')) {
   tab.addEventListener('click', () => showView(tab.dataset.view as View))
 }
+
+const searchInput = document.querySelector<HTMLInputElement>('#search')!
+const searchQuery = () => searchInput.value.trim()
+let searchTimer: number | undefined
+
+async function runSearch() {
+  if (!searchQuery()) return loadHistory()
+  try {
+    const { results } = await searchApplications(searchQuery())
+    historyListEl.replaceChildren(
+      ...results.map((result) => {
+        const li = renderHistoryItem(result)
+        for (const [before, match, after] of result.snippets) {
+          const snippet = document.createElement('p')
+          snippet.className = 'snippet'
+          const mark = document.createElement('mark')
+          mark.textContent = match
+          snippet.append(before, mark, after)
+          li.querySelector('div')!.append(snippet)
+        }
+        return li
+      }),
+    )
+    historyStatusEl.textContent = results.length ? '' : `No postings mention "${searchQuery()}".`
+    historyStatusEl.hidden = results.length > 0
+  } catch (err) {
+    historyStatusEl.textContent = (err as Error).message
+    historyStatusEl.hidden = false
+  }
+}
+
+searchInput.addEventListener('input', () => {
+  window.clearTimeout(searchTimer)
+  searchTimer = window.setTimeout(runSearch, 250) // wait for a pause in typing
+})
 
 loadHistory()

@@ -117,6 +117,15 @@ export const getInsights = (range: InsightsRange, tz: string) =>
 // sidebar history
 export const getHistory = () => request<HistoryResponse>('/history')
 
+// Search the text of every saved posting
+export interface SearchResult extends SavedPage {
+  matches: number
+  snippets: [string, string, string][]
+}
+
+export const searchApplications = (q: string) =>
+  request<{ results: SearchResult[] }>(`/search?${new URLSearchParams({ q })}`)
+
 export const getHistoryPage = (id: string) =>
   request<SavedPageWithText>(`/history/${encodeURIComponent(id)}`)
 
